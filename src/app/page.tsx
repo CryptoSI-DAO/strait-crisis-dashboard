@@ -1,7 +1,8 @@
 import { getLatestMetrics, getMetricHistory } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
-import { ThreatBanner, getThreatLevel } from "@/components/threat-level";
+import { ThreatBanner } from "@/components/threat-level";
+import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import type { Metadata } from "next";
 
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
   const brentHistory = await getMetricHistory("brent_crude", 30);
   const crackHistory = await getMetricHistory("crack_spread_321", 30);
   const dxyHistory = await getMetricHistory("dollar_index", 30);
+  const tankerHistory = await getMetricHistory("tanker_index", 30);
 
   const sortedMetrics = [...metrics].sort(
     (a, b) =>
@@ -45,7 +47,7 @@ export default async function DashboardPage() {
   const spr = metrics.find((m) => m.metric_key === "spr_inventory");
 
   const wtiPrice = wti?.value ?? 0;
-  const threat = getThreatLevel(wtiPrice);
+  const threatScore = await computeThreatScore();
 
   return (
     <main className="min-h-screen">
@@ -97,7 +99,7 @@ export default async function DashboardPage() {
         {/* Threat Level Banner — front and center */}
         {wti && (
           <div className="mb-8">
-            <ThreatBanner threat={threat} wtiPrice={wtiPrice} lastUpdate={lastUpdate} />
+            <ThreatBanner result={threatScore} wtiPrice={wtiPrice} lastUpdate={lastUpdate} />
           </div>
         )}
 
@@ -127,8 +129,8 @@ export default async function DashboardPage() {
         <div className="mb-8 grid gap-4 lg:grid-cols-2">
           <PriceChart data={brentHistory} label="Brent Crude" unit="$/bbl" />
           <PriceChart data={wtiHistory} label="WTI Crude" unit="$/bbl" />
+          <PriceChart data={tankerHistory} label="Tanker Shipping Index" unit="index" />
           <PriceChart data={crackHistory} label="3:2:1 Crack Spread" unit="$/bbl" />
-          <PriceChart data={dxyHistory} label="Dollar Index" unit="index" />
         </div>
 
         {/* Metric Cards */}

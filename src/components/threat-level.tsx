@@ -1,162 +1,148 @@
 import { cn } from "@/lib/utils";
-
-export type ThreatLevel = "GREEN" | "YELLOW" | "RED";
-
-export interface ThreatConfig {
-  level: ThreatLevel;
-  label: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  glowColor: string;
-  description: string;
-  oilRange: string;
-  icon: string;
-}
-
-export function getThreatLevel(wtiPrice: number): ThreatConfig {
-  if (wtiPrice >= 85) {
-    return {
-      level: "RED",
-      label: "ELEVATED",
-      color: "#f85149",
-      bgColor: "rgba(248, 81, 73, 0.12)",
-      borderColor: "rgba(248, 81, 73, 0.4)",
-      glowColor: "rgba(248, 81, 73, 0.25)",
-      description: "Oil above $85/bbl. Supply disruption risk is high. Energy costs are pressuring consumers and markets. Watch for geopolitical escalation and SPR drawdowns.",
-      oilRange: "$85+ USD/bbl",
-      icon: "▲",
-    };
-  } else if (wtiPrice >= 70) {
-    return {
-      level: "YELLOW",
-      label: "GUARDED",
-      color: "#f0b429",
-      bgColor: "rgba(240, 180, 41, 0.12)",
-      borderColor: "rgba(240, 180, 41, 0.4)",
-      glowColor: "rgba(240, 180, 41, 0.25)",
-      description: "Oil in the $70–$85/bbl range. Elevated but manageable. Monitor shipping chokepoints, refinery utilization, and dollar strength for directional signals.",
-      oilRange: "$70–$85 USD/bbl",
-      icon: "◆",
-    };
-  } else {
-    return {
-      level: "GREEN",
-      label: "LOW",
-      color: "#3fb950",
-      bgColor: "rgba(63, 185, 80, 0.12)",
-      borderColor: "rgba(63, 185, 80, 0.4)",
-      glowColor: "rgba(63, 185, 80, 0.25)",
-      description: "Oil below $70/bbl. Supply is flowing normally. Energy costs are not a near-term risk to markets or consumers. Conditions are stable.",
-      oilRange: "Sub $70 USD/bbl",
-      icon: "▼",
-    };
-  }
-}
+import type { ThreatScoreResult, ThreatScoreComponent } from "@/lib/threat-score";
 
 export function ThreatBanner({
-  threat,
+  result,
   wtiPrice,
   lastUpdate,
 }: {
-  threat: ThreatConfig;
+  result: ThreatScoreResult;
   wtiPrice: number;
   lastUpdate?: string;
 }) {
+  const { level, label, color, total, components, summary } = result;
+
   return (
     <div
       className="relative overflow-hidden rounded-2xl border p-6 sm:p-8"
       style={{
-        backgroundColor: threat.bgColor,
-        borderColor: threat.borderColor,
-        boxShadow: `0 0 40px ${threat.glowColor}`,
+        backgroundColor: `${color}15`,
+        borderColor: `${color}66`,
+        boxShadow: `0 0 40px ${color}40`,
       }}
     >
-      {/* Glow effect */}
+      {/* Glow */}
       <div
         className="pointer-events-none absolute -top-1/2 left-1/2 h-full w-[120%] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-        style={{ backgroundColor: threat.color }}
+        style={{ backgroundColor: color }}
       />
 
-      <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: Level indicator */}
-        <div className="flex items-center gap-5">
-          {/* Big circle indicator */}
-          <div
-            className="flex size-20 items-center justify-center rounded-full border-2 sm:size-24"
-            style={{
-              borderColor: threat.color,
-              backgroundColor: `${threat.color}15`,
-              boxShadow: `inset 0 0 20px ${threat.glowColor}, 0 0 15px ${threat.glowColor}`,
-            }}
-          >
-            <span
-              className="text-3xl font-black sm:text-4xl"
-              style={{ color: threat.color }}
+      <div className="relative">
+        {/* Top row: indicator + score */}
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-5">
+            {/* Circle */}
+            <div
+              className="flex size-20 items-center justify-center rounded-full border-2 sm:size-24"
+              style={{
+                borderColor: color,
+                backgroundColor: `${color}15`,
+                boxShadow: `inset 0 0 20px ${color}40, 0 0 15px ${color}40`,
+              }}
             >
-              {threat.icon}
-            </span>
+              <div className="text-center">
+                <p className="font-mono text-2xl font-black sm:text-3xl" style={{ color }}>
+                  {total}
+                </p>
+                <p className="font-mono text-[0.5rem] tracking-wider text-muted-foreground uppercase">
+                  /100
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono text-[0.65rem] tracking-[0.2em] text-muted-foreground uppercase">
+                Strait Threat Level
+              </p>
+              <h2
+                className="text-3xl font-black tracking-tight sm:text-4xl"
+                style={{ color }}
+              >
+                {level}
+              </h2>
+              <p
+                className="font-mono text-sm font-semibold tracking-wider uppercase"
+                style={{ color, opacity: 0.8 }}
+              >
+                {label}
+              </p>
+            </div>
           </div>
 
-          <div>
+          {/* Current oil price */}
+          <div className="text-center sm:text-right">
             <p className="font-mono text-[0.65rem] tracking-[0.2em] text-muted-foreground uppercase">
-              Strait Threat Level
+              WTI Crude
             </p>
-            <h2
-              className="text-3xl font-black tracking-tight sm:text-4xl"
-              style={{ color: threat.color }}
-            >
-              {threat.level}
-            </h2>
-            <p
-              className="font-mono text-sm font-semibold tracking-wider uppercase"
-              style={{ color: threat.color, opacity: 0.8 }}
-            >
-              {threat.label}
+            <p className="font-mono text-3xl font-bold sm:text-4xl" style={{ color }}>
+              ${wtiPrice.toFixed(2)}
             </p>
+            <p className="font-mono text-xs text-muted-foreground">/bbl</p>
           </div>
         </div>
 
-        {/* Right: Current oil price */}
-        <div className="text-center sm:text-right">
-          <p className="font-mono text-[0.65rem] tracking-[0.2em] text-muted-foreground uppercase">
-            WTI Crude
-          </p>
-          <p
-            className="font-mono text-3xl font-bold sm:text-4xl"
-            style={{ color: threat.color }}
-          >
-            ${wtiPrice.toFixed(2)}
-          </p>
-          <p className="font-mono text-xs text-muted-foreground">/bbl</p>
+        {/* Score breakdown */}
+        <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {components.map((c) => (
+            <ScoreBar key={c.name} component={c} />
+          ))}
         </div>
-      </div>
 
-      {/* Description */}
-      <div className="relative mt-5 border-t pt-4" style={{ borderColor: threat.borderColor }}>
-        <p className="text-sm leading-relaxed text-foreground/90">
-          {threat.description}
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-          <span>
-            <span className="inline-block size-2 rounded-full mr-1.5" style={{ backgroundColor: "#3fb950" }} />
-            Green: Sub $70
-          </span>
-          <span>
-            <span className="inline-block size-2 rounded-full mr-1.5" style={{ backgroundColor: "#f0b429" }} />
-            Yellow: $70–$85
-          </span>
-          <span>
-            <span className="inline-block size-2 rounded-full mr-1.5" style={{ backgroundColor: "#f85149" }} />
-            Red: $85+
-          </span>
-          {lastUpdate && (
-            <span className="ml-auto">
-              Updated {new Date(lastUpdate).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        {/* Summary + legend */}
+        <div className="mt-5 border-t pt-4" style={{ borderColor: `${color}33` }}>
+          <p className="text-sm leading-relaxed text-foreground/90">{summary}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+            <span>
+              <span className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: "#3fb950" }} />
+              Green: 0–35
             </span>
-          )}
+            <span>
+              <span className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: "#f0b429" }} />
+              Yellow: 36–65
+            </span>
+            <span>
+              <span className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: "#f85149" }} />
+              Red: 66–100
+            </span>
+            {lastUpdate && (
+              <span className="ml-auto">
+                Updated {new Date(lastUpdate).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ScoreBar({ component }: { component: ThreatScoreComponent }) {
+  const pct = (component.score / component.maxScore) * 100;
+  const color =
+    component.status === "high" ? "#f85149"
+    : component.status === "elevated" ? "#f0b429"
+    : "#3fb950";
+  const scoreText = `${component.score}/${component.maxScore}`;
+
+  return (
+    <div className="rounded-lg border border-border bg-card/60 p-3">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[0.6rem] tracking-wider text-muted-foreground uppercase">
+          {component.name}
+        </p>
+        <p className="font-mono text-xs font-bold" style={{ color }}>
+          {scoreText}
+        </p>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+      <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
+        {component.detail}
+      </p>
     </div>
   );
 }

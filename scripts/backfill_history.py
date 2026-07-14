@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Strait Crisis Dashboard — Historical Backfill
-Fetches 90 days of historical price data from Yahoo Finance and writes to Supabase.
-One-time script to populate charts with real history.
+Strait Crisis Dashboard — Historical Backfill v2
+Fetches 90 days of historical data including tanker stocks.
 """
 
 import os
@@ -19,12 +18,20 @@ if not SUPABASE_SERVICE_KEY:
     print("ERROR: SUPABASE_SERVICE_ROLE_KEY not set")
     sys.exit(1)
 
-TICKERS = {
+PRICE_TICKERS = {
     "CL=F": {"key": "wti_crude", "label": "WTI Crude Oil", "category": "Crude Oil", "unit": "$/bbl"},
     "BZ=F": {"key": "brent_crude", "label": "Brent Crude Oil", "category": "Crude Oil", "unit": "$/bbl"},
     "RB=F": {"key": "rbob_gasoline", "label": "RBOB Gasoline", "category": "Refined Products", "unit": "$/gal"},
     "HO=F": {"key": "heating_oil", "label": "Heating Oil", "category": "Refined Products", "unit": "$/gal"},
     "DX-Y.NYB": {"key": "dollar_index", "label": "US Dollar Index", "category": "Forex", "unit": "index"},
+}
+
+TANKER_TICKERS = {
+    "FRO": "Frontline",
+    "NAT": "Nordic American Tankers",
+    "STNG": "Scorpio Tankers",
+    "TNK": "Teekay Tankers",
+    "INSW": "International Seaways",
 }
 
 HEADERS = {
@@ -39,9 +46,9 @@ def fetch_historical_data():
     """Fetch 3 months of daily close prices from Yahoo Finance."""
     print("Fetching 3 months of historical data from Yahoo Finance...\n")
 
-    all_data = {}  # {metric_key: {date_str: value}}
+    all_data = {}
 
-    for ticker_symbol, meta in TICKERS.items():
+    for ticker_symbol, meta in PRICE_TICKERS.items():
         try:
             ticker = yf.Ticker(ticker_symbol)
             hist = ticker.history(period="3mo")
@@ -49,35 +56,67 @@ def fetch_historical_data():
                 print(f"  SKIP {ticker_symbol}: no data")
                 continue
 
-            # Build dict of date -> close price
             dates_values = {}
             for idx, row in hist.iterrows():
-                # idx is a pandas Timestamp with timezone
                 date_str = idx.strftime("%Y-%m-%dT16:00:00+00:00")
                 dates_values[date_str] = round(float(row["Close"]), 4)
 
-            all_data[meta["key"]] = {
-                "meta": meta,
-                "data": dates_values,
-            }
+            all_data[meta["key"]] = {"meta": meta, "data": dates_values}
             print(f"  OK {ticker_symbol} ({meta['key']}): {len(dates_values)} days")
-            if dates_values:
-                first_date = sorted(dates_values.keys())[0]
-                last_date = sorted(dates_values.keys())[-1]
-                print(f"      Range: {first_date[:10]} → {last_date[:10]}")
         except Exception as e:
             print(f"  FAIL {ticker_symbol}: {e}")
+
+    # Tanker composite index — average of all tanker stock prices per day
+    print("\nFetching tanker shipping stocks...")
+    tanker_daily = {}  # {date_str: [prices]}
+
+    for symbol, name in TANKER_TICKERS.items():
+        try:
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="3mo")
+            if hist.empty:
+                print(f"  SKIP {symbol}: no data")
+                continue
+
+            count = 0
+            for idx, row in hist.iterrows():
+                date_str = idx.strftime("%Y-%m-%dT16:00:00+00:00")
+                price = float(row["Close"])
+                if date_str not in tanker_daily:
+                    tanker_daily[date_str] = []
+                tanker_daily[date_str].append(price)
+                count += 1
+
+            print(f"  OK {symbol} ({name}): {count} days")
+        except Exception as e:
+            print(f"  FAIL {symbol}: {e}")
+
+    # Compute composite tanker index
+    if tanker_daily:
+        tanker_data = {}
+        for date_str, prices in tanker_daily.items():
+            tanker_data[date_str] = round(sum(prices) / len(prices), 4)
+
+        all_data["tanker_index"] = {
+            "meta": {
+                "key": "tanker_index",
+                "label": "Tanker Shipping Index",
+                "category": "Shipping",
+                "unit": "index",
+            },
+            "data": tanker_data,
+        }
+        print(f"  OK tanker_index: {len(tanker_data)} days (composite of {len(TANKER_TICKERS)} stocks)")
 
     return all_data
 
 
 def build_records(all_data):
-    """Build metric records including calculated ones for each date."""
+    """Build metric records including calculated ones."""
     print("\nBuilding records (including calculated metrics)...\n")
 
     records = []
 
-    # First, add the raw price records
     for metric_key, info in all_data.items():
         meta = info["meta"]
         for date_str, value in info["data"].items():
@@ -91,14 +130,10 @@ def build_records(all_data):
                 "recorded_at": date_str,
             })
 
-    # Now calculate derived metrics per date
-    # Get all unique dates across all metrics
     all_dates = set()
     for info in all_data.values():
         all_dates.update(info["data"].keys())
-
     sorted_dates = sorted(all_dates)
-    print(f"  Total unique trading dates: {len(sorted_dates)}")
 
     brent_wti_count = 0
     crack_count = 0
@@ -109,21 +144,18 @@ def build_records(all_data):
         rbob = all_data.get("rbob_gasoline", {}).get("data", {}).get(date_str)
         ho = all_data.get("heating_oil", {}).get("data", {}).get(date_str)
 
-        # Brent-WTI spread
         if brent is not None and wti is not None:
-            spread = round(brent - wti, 4)
             records.append({
                 "metric_key": "brent_wti_spread",
                 "metric_label": "Brent-WTI Spread",
                 "category": "Crude Oil",
-                "value": spread,
+                "value": round(brent - wti, 4),
                 "unit": "$/bbl",
                 "source": "calculated",
                 "recorded_at": date_str,
             })
             brent_wti_count += 1
 
-        # 3:2:1 Crack spread
         if wti is not None and rbob is not None and ho is not None:
             crack = round(((2 * rbob + ho) * 42 / 3) - wti, 4)
             records.append({
@@ -149,22 +181,16 @@ def write_to_supabase(records):
     print(f"\nWriting {len(records)} records to Supabase...\n")
 
     written = 0
-    skipped = 0
     failed = 0
 
     for i, record in enumerate(records):
         try:
-            # Use upsert — delete today's record for this metric+date, then insert
             date_part = record["recorded_at"][:10]
-
-            # Delete existing record for this metric on this date
             requests.delete(
                 f"{SUPABASE_URL}/rest/v1/crisis_metrics?metric_key=eq.{record['metric_key']}&record_date=eq.{date_part}",
                 headers=HEADERS,
                 timeout=10,
             )
-
-            # Insert fresh
             resp = requests.post(
                 f"{SUPABASE_URL}/rest/v1/crisis_metrics",
                 headers=HEADERS,
@@ -174,26 +200,24 @@ def write_to_supabase(records):
             if resp.status_code in (200, 201):
                 written += 1
             else:
-                # Might be a duplicate or constraint violation
-                skipped += 1
+                failed += 1
         except Exception as e:
             failed += 1
             if failed <= 3:
                 print(f"  FAIL {record['metric_key']} @ {record['recorded_at'][:10]}: {e}")
 
         if (i + 1) % 100 == 0:
-            print(f"  Progress: {i + 1}/{len(records)} (written={written}, skipped={skipped}, failed={failed})")
+            print(f"  Progress: {i + 1}/{len(records)} (written={written}, failed={failed})")
 
-    print(f"\n  Done: {written} written, {skipped} skipped, {failed} failed")
+    print(f"\n  Done: {written} written, {failed} failed")
     return written
 
 
 def main():
     print("=" * 60)
-    print("Strait Crisis Dashboard — Historical Backfill (90 days)")
+    print("Strait Crisis Dashboard — Historical Backfill v2 (90 days)")
     print(f"Time: {datetime.now(timezone.utc).isoformat()}")
     print("=" * 60)
-    print()
 
     all_data = fetch_historical_data()
     records = build_records(all_data)
@@ -201,7 +225,6 @@ def main():
 
     print(f"\n{'=' * 60}")
     print(f"Backfill complete: {written} records written")
-    print(f"Charts should now show ~90 days of history")
     print(f"{'=' * 60}")
 
 

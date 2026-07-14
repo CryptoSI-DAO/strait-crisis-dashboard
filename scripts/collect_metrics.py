@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Strait Crisis Dashboard — Data Collector
-Fetches macro energy metrics from Yahoo Finance and writes to Supabase.
-
-Runs daily via Hermes cron. Uses REST API with service_role key for writes.
+Strait Crisis Dashboard — Data Collector (v2)
+Fetches macro energy metrics + tanker shipping proxies from Yahoo Finance.
+Writes to Supabase. Runs daily via Hermes cron.
 """
 
 import os
@@ -21,12 +20,22 @@ if not SUPABASE_SERVICE_KEY:
     print("ERROR: SUPABASE_SERVICE_ROLE_KEY not set")
     sys.exit(1)
 
-TICKERS = {
+# Raw price tickers
+PRICE_TICKERS = {
     "CL=F": {"key": "wti_crude", "label": "WTI Crude Oil", "category": "Crude Oil", "unit": "$/bbl"},
     "BZ=F": {"key": "brent_crude", "label": "Brent Crude Oil", "category": "Crude Oil", "unit": "$/bbl"},
     "RB=F": {"key": "rbob_gasoline", "label": "RBOB Gasoline", "category": "Refined Products", "unit": "$/gal"},
     "HO=F": {"key": "heating_oil", "label": "Heating Oil", "category": "Refined Products", "unit": "$/gal"},
     "DX-Y.NYB": {"key": "dollar_index", "label": "US Dollar Index", "category": "Forex", "unit": "index"},
+}
+
+# Tanker shipping proxies — composite index
+TANKER_TICKERS = {
+    "FRO": "Frontline",
+    "NAT": "Nordic American Tankers",
+    "STNG": "Scorpio Tankers",
+    "TNK": "Teekay Tankers",
+    "INSW": "International Seaways",
 }
 
 EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
@@ -45,12 +54,12 @@ HEADERS = {
 }
 
 
-def fetch_yahoo_metrics():
-    """Fetch latest prices from Yahoo Finance via yfinance."""
+def fetch_price_metrics():
+    """Fetch latest prices from Yahoo Finance."""
     results = []
     now_str = datetime.now(timezone.utc).isoformat()
 
-    for ticker_symbol, meta in TICKERS.items():
+    for ticker_symbol, meta in PRICE_TICKERS.items():
         try:
             ticker = yf.Ticker(ticker_symbol)
             hist = ticker.history(period="2d")
@@ -105,6 +114,47 @@ def fetch_yahoo_metrics():
     return results
 
 
+def fetch_tanker_index():
+    """Fetch tanker stock prices, compute composite index."""
+    now_str = datetime.now(timezone.utc).isoformat()
+    prices = []
+    labels = []
+
+    for symbol, name in TANKER_TICKERS.items():
+        try:
+            t = yf.Ticker(symbol)
+            hist = t.history(period="2d")
+            if not hist.empty:
+                price = float(hist["Close"].iloc[-1])
+                prices.append(price)
+                labels.append(f"{symbol}={price:.2f}")
+                print(f"  OK {symbol} ({name}): ${price:.2f}")
+            else:
+                print(f"  SKIP {symbol}: no data")
+        except Exception as e:
+            print(f"  FAIL {symbol}: {e}")
+
+    if not prices:
+        print("  SKIP tanker_index: no data")
+        return None
+
+    # Composite = simple average of all tanker stock prices (normalized later)
+    # We store the raw composite; the scoring engine computes 7-day change
+    composite = sum(prices) / len(prices)
+
+    result = {
+        "metric_key": "tanker_index",
+        "metric_label": "Tanker Shipping Index",
+        "category": "Shipping",
+        "value": round(composite, 4),
+        "unit": "index",
+        "source": "yahoo_finance",
+        "recorded_at": now_str,
+    }
+    print(f"  OK tanker_index: {composite:.4f} (avg of {len(prices)} stocks: {', '.join(labels)})")
+    return result
+
+
 def fetch_spr_inventory():
     """Fetch SPR inventory from EIA API."""
     if not EIA_API_KEY:
@@ -123,7 +173,7 @@ def fetch_spr_inventory():
 
         latest = records[0]
         value = float(latest["value"])
-        value_millions = value / 1000  # thousand barrels → millions
+        value_millions = value / 1000
 
         now_str = datetime.now(timezone.utc).isoformat()
         result = {
@@ -147,7 +197,6 @@ def write_to_supabase(metrics):
     written = 0
     for metric in metrics:
         try:
-            # Delete today's record first (upsert pattern)
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             requests.delete(
                 f"{SUPABASE_URL}/rest/v1/crisis_metrics?metric_key=eq.{metric['metric_key']}&record_date=eq.{today}",
@@ -155,7 +204,6 @@ def write_to_supabase(metrics):
                 timeout=10,
             )
 
-            # Insert fresh
             resp = requests.post(
                 f"{SUPABASE_URL}/rest/v1/crisis_metrics",
                 headers=HEADERS,
@@ -166,7 +214,7 @@ def write_to_supabase(metrics):
                 written += 1
                 print(f"  WROTE {metric['metric_key']}")
             else:
-                print(f"  FAIL {metric['metric_key']}: {resp.status_code} {resp.text[:100]}")
+                print(f"  FAIL {metric['metric_key']}: {resp.status_code}")
         except Exception as e:
             print(f"  WRITE FAIL {metric['metric_key']}: {e}")
 
@@ -174,13 +222,18 @@ def write_to_supabase(metrics):
 
 
 def main():
-    print(f"=== Strait Crisis Dashboard Collector ===")
+    print(f"=== Strait Crisis Dashboard Collector v2 ===")
     print(f"Time: {datetime.now(timezone.utc).isoformat()}")
     print()
 
-    print("Fetching Yahoo Finance metrics...")
-    metrics = fetch_yahoo_metrics()
-    print(f"  Got {len(metrics)} metrics from Yahoo Finance")
+    print("Fetching price metrics from Yahoo Finance...")
+    metrics = fetch_price_metrics()
+    print(f"  Got {len(metrics)} price metrics")
+
+    print("\nFetching tanker shipping index...")
+    tanker = fetch_tanker_index()
+    if tanker:
+        metrics.append(tanker)
 
     print("\nFetching SPR inventory from EIA...")
     spr = fetch_spr_inventory()

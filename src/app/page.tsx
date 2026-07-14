@@ -52,30 +52,30 @@ export default async function DashboardPage() {
   const threatScore = await computeThreatScore();
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-              <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-primary" strokeWidth="2">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 sm:size-9">
+              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-primary sm:size-5" strokeWidth="2">
                 <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" />
                 <path d="M2 7l10 5 10-5" />
                 <path d="M12 22V12" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight">
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">
                 Strait Crisis Dashboard
               </h1>
-              <p className="font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">
+              <p className="hidden font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase sm:block">
                 Macro Energy Security Monitor
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             {lastUpdate && (
-              <div className="hidden text-right sm:block">
+              <div className="hidden text-right md:block">
                 <p className="font-mono text-[0.6rem] tracking-wider text-muted-foreground uppercase">
                   Last Update
                 </p>
@@ -89,15 +89,15 @@ export default async function DashboardPage() {
                 </p>
               </div>
             )}
-            <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5">
+            <div className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 sm:px-3 sm:py-1.5">
               <span className="size-2 animate-pulse rounded-full bg-success" />
-              <span className="font-mono text-xs text-muted-foreground">LIVE</span>
+              <span className="font-mono text-[0.65rem] text-muted-foreground sm:text-xs">LIVE</span>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-5 sm:px-8 sm:py-8">
         {/* Threat Level Banner — front and center */}
         {wti && (
           <div className="mb-8">
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
 
         {/* Summary Bar */}
         {(wti || brent || crack || dxy) && (
-          <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-2 sm:mb-8 sm:gap-3 lg:grid-cols-4">
             {wti && (
               <SummaryStat label="WTI Crude" value={formatCurrency(wti.value)} change={wti.change_pct} />
             )}
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Charts */}
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:gap-4 lg:grid-cols-2">
           <PriceChart data={brentHistory} label="Brent Crude" unit="$/bbl" />
           <PriceChart data={wtiHistory} label="WTI Crude" unit="$/bbl" />
           <PriceChart data={tankerHistory} label="Tanker Shipping Index" unit="index" />
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Metric Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {sortedMetrics.map((metric) => (
             <MetricCard key={metric.metric_key} metric={metric} />
           ))}
@@ -144,7 +144,7 @@ export default async function DashboardPage() {
 
         {/* SPR Section — Barrel + Chart */}
         {spr && (
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3">
             <SPRBarrel current={spr.value} previous={spr.change} />
             <div className="lg:col-span-2">
               <PriceChart data={sprHistory} label="SPR Crude Inventory" unit="million bbl" height={240} />
@@ -153,13 +153,13 @@ export default async function DashboardPage() {
         )}
 
         {/* Footer */}
-        <footer className="mt-12 border-t border-border pt-6">
-          <div className="flex flex-col items-start justify-between gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center">
+        <footer className="mt-10 border-t border-border pt-5 sm:mt-12 sm:pt-6">
+          <div className="flex flex-col items-start justify-between gap-3 text-[0.7rem] text-muted-foreground sm:flex-row sm:items-center sm:text-xs">
             <p>
-              Data: Yahoo Finance (delayed 15min) · EIA · Updated daily via Hermes cron
+              Data: Yahoo Finance (15min delay) · EIA API · Daily cron
             </p>
             <p className="font-mono">
-              For research purposes. Not financial advice.
+              Research only. Not financial advice.
             </p>
           </div>
         </footer>

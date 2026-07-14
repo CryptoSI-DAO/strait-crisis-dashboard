@@ -10,7 +10,7 @@ export function PriceChart({
   label,
   unit,
   className,
-  height = 200,
+  height = 180,
 }: {
   data: ChartPoint[];
   label: string;
@@ -35,7 +35,7 @@ export function PriceChart({
   }
 
   const width = 600;
-  const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+  const padding = { top: 15, right: 15, bottom: 25, left: 45 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -74,18 +74,18 @@ export function PriceChart({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border bg-card p-4",
+        "overflow-hidden rounded-xl border border-border bg-card p-3 sm:p-4",
         className,
       )}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
-        <span className="font-mono text-xs text-muted-foreground">{unit}</span>
+      <div className="mb-2 flex items-center justify-between sm:mb-3">
+        <h3 className="text-xs font-semibold text-foreground sm:text-sm">{label}</h3>
+        <span className="font-mono text-[0.65rem] text-muted-foreground sm:text-xs">{unit}</span>
       </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full"
-        style={{ height }}
+        className="h-auto w-full"
+        style={{ maxHeight: height }}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>

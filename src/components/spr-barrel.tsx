@@ -28,10 +28,10 @@ export function SPRBarrel({
   const yForValue = (val: number) => 115 - (val / SPR_MAX_CAPACITY) * 110;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card p-6">
+    <div className="overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-mono text-[0.65rem] tracking-[0.12em] text-muted-foreground uppercase">
+          <p className="font-mono text-[0.6rem] tracking-[0.12em] text-muted-foreground uppercase sm:text-[0.65rem]">
             Strategic Petroleum Reserve
           </p>
           <h3 className="mt-1 text-sm font-semibold text-foreground">
@@ -39,7 +39,7 @@ export function SPRBarrel({
           </h3>
         </div>
         <div
-          className="rounded-md px-2 py-0.5 font-mono text-[0.6rem] font-bold tracking-wider uppercase"
+          className="rounded-md px-2 py-0.5 font-mono text-[0.55rem] font-bold tracking-wider uppercase sm:text-[0.6rem]"
           style={{
             color: statusColor,
             backgroundColor: `${statusColor}15`,
@@ -49,7 +49,7 @@ export function SPRBarrel({
         </div>
       </div>
 
-      <div className="mt-6 flex items-start gap-6">
+      <div className="mt-5 flex flex-col items-center gap-5 sm:mt-6 sm:flex-row sm:items-start sm:gap-6">
         {/* Barrel SVG with markers */}
         <div className="relative shrink-0">
           <svg width="100" height="140" viewBox="0 0 100 140">
@@ -160,7 +160,7 @@ export function SPRBarrel({
         </div>
 
         {/* Stats */}
-        <div className="flex-1">
+        <div className="w-full flex-1">
           <div className="flex items-baseline gap-2">
             <span className="font-mono text-3xl font-bold text-foreground">
               {formatNumber(current, 1)}

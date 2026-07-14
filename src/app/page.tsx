@@ -1,6 +1,7 @@
 import { getLatestMetrics, getMetricHistory } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
+import { ThreatBanner, getThreatLevel } from "@/components/threat-level";
 import { formatCurrency } from "@/lib/utils";
 import type { Metadata } from "next";
 
@@ -42,6 +43,9 @@ export default async function DashboardPage() {
   const crack = metrics.find((m) => m.metric_key === "crack_spread_321");
   const dxy = metrics.find((m) => m.metric_key === "dollar_index");
   const spr = metrics.find((m) => m.metric_key === "spr_inventory");
+
+  const wtiPrice = wti?.value ?? 0;
+  const threat = getThreatLevel(wtiPrice);
 
   return (
     <main className="min-h-screen">
@@ -90,6 +94,13 @@ export default async function DashboardPage() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
+        {/* Threat Level Banner — front and center */}
+        {wti && (
+          <div className="mb-8">
+            <ThreatBanner threat={threat} wtiPrice={wtiPrice} lastUpdate={lastUpdate} />
+          </div>
+        )}
+
         {/* Summary Bar */}
         {(wti || brent || crack || dxy) && (
           <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">

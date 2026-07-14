@@ -1,39 +1,35 @@
 import { getLatestMetrics, getMetricHistory } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/supabase-server";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
 import { ThreatBanner } from "@/components/threat-level";
 import { SPRBarrel } from "@/components/spr-barrel";
+import { LockedCard, PremiumLockedCard } from "@/components/locked-card";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
+import { DashboardHeader } from "@/components/dashboard-header";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 3600;
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Strait Crisis Dashboard",
   description:
-    "Real-time macro energy security monitor — oil, Brent, crack spread, DXY, SPR inventory.",
+    "Real-time macro energy security monitor — oil, Brent, crack spread, DXY, SPR inventory, and strategic shipping chokepoints.",
 };
 
-const METRIC_ORDER = [
-  "wti_crude",
-  "brent_crude",
-  "brent_wti_spread",
-  "crack_spread_321",
-  "rbob_gasoline",
-  "heating_oil",
-  "dollar_index",
-  "spr_inventory",
-];
-
 export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  const isAnonymous = !user;
+  const isPremium = user?.tier === "premium";
+
   const metrics = await getLatestMetrics();
-  const wtiHistory = await getMetricHistory("wti_crude", 30);
-  const brentHistory = await getMetricHistory("brent_crude", 30);
-  const crackHistory = await getMetricHistory("crack_spread_321", 30);
-  const dxyHistory = await getMetricHistory("dollar_index", 30);
-  const tankerHistory = await getMetricHistory("tanker_index", 30);
+  const wtiHistory = await getMetricHistory("wti_crude", isPremium ? 90 : 30);
+  const brentHistory = await getMetricHistory("brent_crude", isPremium ? 90 : 30);
+  const crackHistory = await getMetricHistory("crack_spread_321", isPremium ? 90 : 30);
+  const dxyHistory = await getMetricHistory("dollar_index", isPremium ? 90 : 30);
+  const tankerHistory = await getMetricHistory("tanker_index", isPremium ? 90 : 30);
   const sprHistory = await getMetricHistory("spr_inventory", 90);
 
   const sortedMetrics = [...metrics].sort(
@@ -53,59 +49,17 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 sm:size-9">
-              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-primary sm:size-5" strokeWidth="2">
-                <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" />
-                <path d="M2 7l10 5 10-5" />
-                <path d="M12 22V12" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">
-                Strait Crisis Dashboard
-              </h1>
-              <p className="hidden font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase sm:block">
-                Macro Energy Security Monitor
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-            {lastUpdate && (
-              <div className="hidden text-right md:block">
-                <p className="font-mono text-[0.6rem] tracking-wider text-muted-foreground uppercase">
-                  Last Update
-                </p>
-                <p className="font-mono text-xs text-foreground">
-                  {new Date(lastUpdate).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 sm:px-3 sm:py-1.5">
-              <span className="size-2 animate-pulse rounded-full bg-success" />
-              <span className="font-mono text-[0.65rem] text-muted-foreground sm:text-xs">LIVE</span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <DashboardHeader user={user} lastUpdate={lastUpdate} />
 
       <div className="mx-auto max-w-7xl px-3 py-5 sm:px-8 sm:py-8">
-        {/* Threat Level Banner — front and center */}
+        {/* Threat Level Banner — always free */}
         {wti && (
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <ThreatBanner result={threatScore} wtiPrice={wtiPrice} lastUpdate={lastUpdate} />
           </div>
         )}
 
-        {/* Summary Bar */}
+        {/* Summary Bar — always free */}
         {(wti || brent || crack || dxy) && (
           <div className="mb-6 grid grid-cols-2 gap-2 sm:mb-8 sm:gap-3 lg:grid-cols-4">
             {wti && (
@@ -127,27 +81,67 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Charts */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:gap-4 lg:grid-cols-2">
-          <PriceChart data={brentHistory} label="Brent Crude" unit="$/bbl" />
-          <PriceChart data={wtiHistory} label="WTI Crude" unit="$/bbl" />
-          <PriceChart data={tankerHistory} label="Tanker Shipping Index" unit="index" />
-          <PriceChart data={crackHistory} label="3:2:1 Crack Spread" unit="$/bbl" />
-        </div>
+        {/* Charts — anonymous sees 2, free sees all, premium sees 90-day */}
+        {isAnonymous ? (
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:gap-4 lg:grid-cols-2">
+            <PriceChart data={brentHistory} label="Brent Crude" unit="$/bbl" />
+            <PriceChart data={wtiHistory} label="WTI Crude" unit="$/bbl" />
+            <LockedCard
+              title="Tanker Shipping Index"
+              message="Sign up free to see tanker stress levels and crack spreads."
+              cta="Sign up free"
+              href="/login"
+            />
+            <LockedCard
+              title="3:2:1 Crack Spread"
+              message="Sign up free to see refining margin stress."
+              cta="Sign up free"
+              href="/login"
+            />
+          </div>
+        ) : (
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:gap-4 lg:grid-cols-2">
+            <PriceChart data={brentHistory} label="Brent Crude" unit="$/bbl" />
+            <PriceChart data={wtiHistory} label="WTI Crude" unit="$/bbl" />
+            <PriceChart data={tankerHistory} label="Tanker Shipping Index" unit="index" />
+            <PriceChart data={crackHistory} label="3:2:1 Crack Spread" unit="$/bbl" />
+          </div>
+        )}
 
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-          {sortedMetrics.map((metric) => (
-            <MetricCard key={metric.metric_key} metric={metric} />
-          ))}
-        </div>
+        {/* Metric Cards — free sees half, premium sees all */}
+        {isAnonymous ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            {sortedMetrics.slice(0, 4).map((metric) => (
+              <MetricCard key={metric.metric_key} metric={metric} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+            {sortedMetrics.map((metric) => (
+              <MetricCard key={metric.metric_key} metric={metric} />
+            ))}
+          </div>
+        )}
 
-        {/* SPR Section — Barrel + Chart */}
-        {spr && (
+        {/* SPR Section — Premium only */}
+        {isPremium && spr ? (
           <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3">
             <SPRBarrel current={spr.value} previous={spr.change} />
             <div className="lg:col-span-2">
               <PriceChart data={sprHistory} label="SPR Crude Inventory" unit="million bbl" height={240} />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3">
+            <PremiumLockedCard
+              title="SPR Barrel Visualization"
+              message="See the Strategic Petroleum Reserve fill level with 20-year historical lows. Upgrade to unlock."
+            />
+            <div className="lg:col-span-2">
+              <PremiumLockedCard
+                title="90-Day SPR History"
+                message="Track the SPR drawdown trend over 90 days. Premium feature."
+              />
             </div>
           </div>
         )}
@@ -167,6 +161,17 @@ export default async function DashboardPage() {
     </main>
   );
 }
+
+const METRIC_ORDER = [
+  "wti_crude",
+  "brent_crude",
+  "brent_wti_spread",
+  "crack_spread_321",
+  "rbob_gasoline",
+  "heating_oil",
+  "dollar_index",
+  "spr_inventory",
+];
 
 function SummaryStat({
   label,

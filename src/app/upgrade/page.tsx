@@ -93,7 +93,7 @@ export default function UpgradePage() {
           </button>
 
           <a
-            href="/"
+            href="/dashboard"
             className="mt-3 block text-center text-xs text-muted-foreground hover:text-foreground"
           >
             Maybe later

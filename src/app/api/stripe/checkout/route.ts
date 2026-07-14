@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${origin}/?upgraded=1`,
+      success_url: `${origin}/dashboard?upgraded=1`,
       cancel_url: `${origin}/upgrade`,
       metadata: { supabaseUserId: user.id },
     });

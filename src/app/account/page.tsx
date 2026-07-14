@@ -132,7 +132,7 @@ export default function AccountPage() {
           Sign out
         </button>
 
-        <a href="/" className="mt-3 block text-center text-xs text-muted-foreground hover:text-foreground">
+        <a href="/dashboard" className="mt-3 block text-center text-xs text-muted-foreground hover:text-foreground">
           Back to dashboard
         </a>
       </div>

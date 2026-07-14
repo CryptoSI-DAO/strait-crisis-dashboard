@@ -2,6 +2,7 @@ import { getLatestMetrics, getMetricHistory } from "@/lib/supabase";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
 import { ThreatBanner } from "@/components/threat-level";
+import { SPRBarrel } from "@/components/spr-barrel";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import type { Metadata } from "next";
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
   const crackHistory = await getMetricHistory("crack_spread_321", 30);
   const dxyHistory = await getMetricHistory("dollar_index", 30);
   const tankerHistory = await getMetricHistory("tanker_index", 30);
+  const sprHistory = await getMetricHistory("spr_inventory", 90);
 
   const sortedMetrics = [...metrics].sort(
     (a, b) =>
@@ -140,26 +142,12 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* SPR Section */}
+        {/* SPR Section — Barrel + Chart */}
         {spr && (
-          <div className="mt-8 rounded-xl border border-border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-[0.65rem] tracking-wider text-muted-foreground uppercase">
-                  Strategic Petroleum Reserve
-                </p>
-                <h2 className="mt-2 text-2xl font-bold">
-                  {spr.value.toLocaleString("en-US", { maximumFractionDigits: 0 })} {spr.unit}
-                </h2>
-              </div>
-              {spr.change !== null && (
-                <div className="text-right">
-                  <p className="font-mono text-xs text-muted-foreground">Change</p>
-                  <p className={`font-mono text-lg font-bold ${(spr.change ?? 0) >= 0 ? "text-success" : "text-danger"}`}>
-                    {spr.change >= 0 ? "+" : ""}{spr.change.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                  </p>
-                </div>
-              )}
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            <SPRBarrel current={spr.value} previous={spr.change} />
+            <div className="lg:col-span-2">
+              <PriceChart data={sprHistory} label="SPR Crude Inventory" unit="million bbl" height={240} />
             </div>
           </div>
         )}

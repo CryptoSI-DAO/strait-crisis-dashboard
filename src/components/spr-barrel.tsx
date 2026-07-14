@@ -1,8 +1,13 @@
 import { formatNumber } from "@/lib/utils";
 
 // SPR max capacity: ~727 million barrels (historical high, July 2010)
-// Current design capacity: 714 million barrels
 const SPR_MAX_CAPACITY = 727;
+
+// Historical low markers (from EIA API data)
+const SPR_LOWS = [
+  { date: "Jul 2023", value: 346.8, label: "2023 Low" },
+  { date: "Dec 2022", value: 372.4, label: "2022 Low" },
+];
 
 export function SPRBarrel({
   current,
@@ -15,10 +20,12 @@ export function SPRBarrel({
   const change = previous ? current - previous : null;
   const isDeclining = change !== null && change < 0;
 
-  // Calculate a simple status
   const status = current > 500 ? "HEALTHY" : current > 350 ? "MODERATE" : "LOW";
   const statusColor =
     current > 500 ? "#3fb950" : current > 350 ? "#f0b429" : "#f85149";
+
+  // Y position on the barrel SVG for a given value
+  const yForValue = (val: number) => 115 - (val / SPR_MAX_CAPACITY) * 110;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card p-6">
@@ -42,10 +49,10 @@ export function SPRBarrel({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center gap-6">
-        {/* Barrel SVG */}
+      <div className="mt-6 flex items-start gap-6">
+        {/* Barrel SVG with markers */}
         <div className="relative shrink-0">
-          <svg width="80" height="120" viewBox="0 0 80 120">
+          <svg width="100" height="140" viewBox="0 0 100 140">
             <defs>
               <clipPath id="barrel-clip">
                 <path d="M 15 10 Q 15 5, 40 5 Q 65 5, 65 10 L 65 110 Q 65 115, 40 115 Q 15 115, 15 110 Z" />
@@ -74,15 +81,14 @@ export function SPRBarrel({
             <g clipPath="url(#barrel-clip)">
               <rect
                 x="10"
-                y={115 - (fillPct / 100) * 110}
+                y={yForValue(current)}
                 width="60"
-                height={(fillPct / 100) * 110}
+                height={115 - yForValue(current)}
                 fill="url(#oil-gradient)"
               />
-              {/* Oil surface shine */}
               <rect
                 x="10"
-                y={115 - (fillPct / 100) * 110}
+                y={yForValue(current)}
                 width="60"
                 height="2"
                 fill="#58a6ff"
@@ -95,15 +101,61 @@ export function SPRBarrel({
             <ellipse cx="40" cy="60" rx="25" ry="4" fill="none" stroke="#5a5a6a" strokeWidth="1" opacity="0.6" />
             <ellipse cx="40" cy="95" rx="25" ry="4" fill="none" stroke="#5a5a6a" strokeWidth="1" opacity="0.6" />
 
-            {/* Fill level marker */}
+            {/* Historical low markers */}
+            {SPR_LOWS.map((low) => {
+              const y = yForValue(low.value);
+              return (
+                <g key={low.label}>
+                  <line
+                    x1="10"
+                    y1={y}
+                    x2="65"
+                    y2={y}
+                    stroke="#f85149"
+                    strokeWidth="1"
+                    strokeDasharray="3,2"
+                    opacity="0.5"
+                  />
+                </g>
+              );
+            })}
+
+            {/* Current level marker (right side) */}
             <line
               x1="65"
-              y1={115 - (fillPct / 100) * 110}
-              x2="75"
-              y2={115 - (fillPct / 100) * 110}
+              y1={yForValue(current)}
+              x2="73"
+              y2={yForValue(current)}
               stroke={statusColor}
               strokeWidth="2"
             />
+            <text
+              x="75"
+              y={yForValue(current) + 3}
+              fill={statusColor}
+              fontSize="6"
+              fontFamily="monospace"
+            >
+              NOW
+            </text>
+
+            {/* Low markers labels (right side) */}
+            {SPR_LOWS.map((low) => {
+              const y = yForValue(low.value);
+              return (
+                <text
+                  key={low.label}
+                  x="75"
+                  y={y + 3}
+                  fill="#f85149"
+                  fontSize="6"
+                  fontFamily="monospace"
+                  opacity="0.8"
+                >
+                  {low.date}
+                </text>
+              );
+            })}
           </svg>
         </div>
 
@@ -118,7 +170,7 @@ export function SPRBarrel({
             </span>
           </div>
 
-          {/* Fill bar */}
+          {/* Fill bar with low markers */}
           <div className="mt-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[0.6rem] tracking-wider text-muted-foreground uppercase">
@@ -128,19 +180,53 @@ export function SPRBarrel({
                 {fillPct.toFixed(1)}%
               </span>
             </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+            <div className="relative mt-1 h-3 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full transition-all"
+                className="absolute h-full rounded-full transition-all"
                 style={{
                   width: `${fillPct}%`,
                   backgroundColor: statusColor,
                 }}
               />
+              {/* Low markers on the bar */}
+              {SPR_LOWS.map((low) => {
+                const markerPct = (low.value / SPR_MAX_CAPACITY) * 100;
+                return (
+                  <div
+                    key={low.label}
+                    className="absolute top-0 h-full"
+                    style={{ left: `${markerPct}%` }}
+                  >
+                    <div className="h-full w-0.5 bg-red-500/50" />
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-0.5 flex justify-between font-mono text-[0.55rem] text-muted-foreground/60">
               <span>0</span>
               <span>727M (max)</span>
             </div>
+          </div>
+
+          {/* Low markers legend */}
+          <div className="mt-3 space-y-1">
+            {SPR_LOWS.map((low) => {
+              const belowLow = current < low.value;
+              const diff = low.value - current;
+              return (
+                <div key={low.label} className="flex items-center gap-2">
+                  <span className="inline-block h-2 w-3 border-t border-dashed border-red-500/60" />
+                  <span className="font-mono text-[0.6rem] text-muted-foreground">
+                    {low.label}: {formatNumber(low.value, 1)}M
+                  </span>
+                  {belowLow && (
+                    <span className="font-mono text-[0.6rem] font-bold text-red-400">
+                      ↓ {formatNumber(diff, 1)}M below
+                    </span>
+                  )}
+                </div>
+                  );
+                })}
           </div>
 
           {change !== null && (

@@ -44,7 +44,7 @@ export async function getCurrentUser() {
   return {
     id: user.id,
     email: user.email ?? "",
-    tier: (profile?.subscription_tier as "free" | "premium") ?? "free",
+    tier: (profile?.subscription_tier as "free" | "premium" | "admin") ?? "free",
     subscriptionStatus: (profile?.subscription_status as string) ?? "none",
     stripeCustomerId: profile?.stripe_customer_id ?? null,
     currentPeriodEnd: profile?.current_period_end ?? null,

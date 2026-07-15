@@ -60,7 +60,8 @@ export default function AccountPage() {
     );
   }
 
-  const isPremium = profile?.subscription_tier === "premium";
+  const isPremium = profile?.subscription_tier === "premium" || profile?.subscription_tier === "admin";
+  const isAdmin = profile?.subscription_tier === "admin";
 
   return (
     <main className="min-h-screen overflow-x-hidden px-4 py-8">
@@ -78,7 +79,7 @@ export default function AccountPage() {
             <span
               className={`rounded-md px-2 py-0.5 font-mono text-[0.6rem] font-bold uppercase ${isPremium ? "bg-accent/15 text-accent" : "bg-muted text-muted-foreground"}`}
             >
-              {isPremium ? "Premium" : "Free"}
+              {isPremium ? (isAdmin ? "ADMIN" : "Premium") : "Free"}
             </span>
           </div>
         </div>

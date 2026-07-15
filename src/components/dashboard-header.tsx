@@ -55,7 +55,7 @@ export function DashboardHeader({
                 <path d="M4 21v-1a8 8 0 0 1 16 0v1" />
               </svg>
               <span className="hidden font-mono text-[0.65rem] text-foreground sm:inline sm:text-xs">
-                {user.tier === "premium" ? "Premium" : "Account"}
+                {user.tier === "admin" ? "ADMIN" : user.tier === "premium" ? "Premium" : "Account"}
               </span>
             </Link>
           ) : (

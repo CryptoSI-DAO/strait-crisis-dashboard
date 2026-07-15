@@ -23,7 +23,8 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const isAnonymous = !user;
-  const isPremium = user?.tier === "premium";
+  const isPremium = user?.tier === "premium" || user?.tier === "admin";
+  const isAdmin = user?.tier === "admin";
 
   // Fetch stored metrics from Supabase (fallback)
   const storedMetrics = await getLatestMetrics();

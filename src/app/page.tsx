@@ -4,6 +4,7 @@ import { getLatestMetrics } from "@/lib/supabase";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import { Logo } from "@/components/logo";
+import { getLivePrices, mergeLiveWithStored } from "@/lib/live-prices";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export default async function LandingPage() {
   const user = await getCurrentUser();
 
   // Fetch live data
-  const metrics = await getLatestMetrics();
+  const storedMetrics = await getLatestMetrics();
+  const livePrices = await getLivePrices();
+  const metrics = mergeLiveWithStored(storedMetrics, livePrices);
   const threatScore = await computeThreatScore();
   const wti = metrics.find((m) => m.metric_key === "wti_crude");
   const brent = metrics.find((m) => m.metric_key === "brent_crude");

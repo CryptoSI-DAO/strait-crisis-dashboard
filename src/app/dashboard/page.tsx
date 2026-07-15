@@ -8,6 +8,7 @@ import { LockedCard, PremiumLockedCard } from "@/components/locked-card";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import { DashboardHeader } from "@/components/dashboard-header";
+import { getLivePrices, mergeLiveWithStored } from "@/lib/live-prices";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,14 @@ export default async function DashboardPage() {
   const isAnonymous = !user;
   const isPremium = user?.tier === "premium";
 
-  const metrics = await getLatestMetrics();
+  // Fetch stored metrics from Supabase (fallback)
+  const storedMetrics = await getLatestMetrics();
+
+  // Fetch live prices from Yahoo Finance (10s cache, falls back to Supabase)
+  const livePrices = await getLivePrices();
+  const metrics = mergeLiveWithStored(storedMetrics, livePrices);
+
+  // History still comes from Supabase (historical data doesn't change intraday)
   const wtiHistory = await getMetricHistory("wti_crude", isPremium ? 90 : 30);
   const brentHistory = await getMetricHistory("brent_crude", isPremium ? 90 : 30);
   const crackHistory = await getMetricHistory("crack_spread_321", isPremium ? 90 : 30);

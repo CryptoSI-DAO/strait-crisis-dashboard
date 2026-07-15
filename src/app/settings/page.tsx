@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { BottomNav } from "@/components/bottom-nav";
+import { ShareButtons } from "@/components/share-buttons";
 
 interface Profile {
   email: string | null;
@@ -227,6 +228,26 @@ export default function SettingsPage() {
             </svg>
             Join Telegram Channel
           </a>
+        </div>
+
+        {/* Share with friends */}
+        <div className="mt-4 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+            <h3 className="text-sm font-semibold">Share with Friends</h3>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Know someone who tracks oil prices or geopolitical risk? Share Strait Crisis.
+          </p>
+          <div className="mt-4">
+            <ShareButtons />
+          </div>
         </div>
 
         {/* Account */}

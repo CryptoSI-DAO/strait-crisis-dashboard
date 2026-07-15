@@ -20,10 +20,16 @@ export const metadata: Metadata = {
   title: "Strait Crisis Dashboard",
   description:
     "Real-time macro energy security monitor — oil, Brent, crack spread, DXY, SPR inventory, and strategic shipping chokepoints.",
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
   openGraph: {
     title: "Strait Crisis Dashboard",
     description:
       "Track the macro signals that matter — oil prices, crack spreads, dollar index, SPR, and shipping.",
+    images: ["/logo.svg"],
   },
 };
 

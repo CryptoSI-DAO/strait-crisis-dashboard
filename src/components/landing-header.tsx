@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AuthModal } from "./auth-modal";
+import { Logo } from "./logo";
 
 export function LandingHeader() {
   const [authOpen, setAuthOpen] = useState(false);
@@ -12,12 +13,8 @@ export function LandingHeader() {
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-              <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-primary" strokeWidth="2">
-                <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" />
-                <path d="M2 7l10 5 10-5" />
-                <path d="M12 22V12" />
-              </svg>
+            <div className="flex size-8 items-center justify-center text-primary">
+              <Logo size={28} />
             </div>
             <span className="text-sm font-bold tracking-tight sm:text-base">
               Strait Crisis

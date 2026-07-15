@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/supabase-server";
 import { getLatestMetrics } from "@/lib/supabase";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,11 @@ export default async function LandingPage() {
         <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-primary/10 blur-[100px]" />
 
         <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
+          {/* Logo */}
+          <div className="mx-auto mb-6 w-20 text-primary">
+            <Logo size={80} />
+          </div>
+
           {/* Threat level badge */}
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-warning/30 bg-warning/10 px-4 py-1.5">
             <span className="size-2 animate-pulse rounded-full bg-warning" />

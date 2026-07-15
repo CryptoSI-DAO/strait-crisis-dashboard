@@ -1,5 +1,8 @@
 import { LandingHeader } from "@/components/landing-header";
 import { getCurrentUser } from "@/lib/supabase-server";
+import { getLatestMetrics } from "@/lib/supabase";
+import { computeThreatScore } from "@/lib/threat-score";
+import { formatCurrency } from "@/lib/utils";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +15,17 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
+
+  // Fetch live data
+  const metrics = await getLatestMetrics();
+  const threatScore = await computeThreatScore();
+  const wti = metrics.find((m) => m.metric_key === "wti_crude");
+  const brent = metrics.find((m) => m.metric_key === "brent_crude");
+  const spr = metrics.find((m) => m.metric_key === "spr_inventory");
+
+  const threatLabel = threatScore.level;
+  const threatColor = threatScore.color;
+
 
   return (
     <main className="min-h-screen overflow-x-hidden">
@@ -27,7 +41,7 @@ export default async function LandingPage() {
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-warning/30 bg-warning/10 px-4 py-1.5">
             <span className="size-2 animate-pulse rounded-full bg-warning" />
             <span className="font-mono text-[0.65rem] tracking-wider text-warning uppercase sm:text-xs">
-              GUARDED — Score: 50/100
+              {threatLabel} — Score: {threatScore.total}/100
             </span>
           </div>
 
@@ -59,10 +73,10 @@ export default async function LandingPage() {
           {/* Quick stats */}
           <div className="mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "WTI Crude", value: "$78.72" },
-              { label: "Brent", value: "$83.89" },
-              { label: "SPR", value: "319.5M bbl" },
-              { label: "Threat", value: "YELLOW" },
+              { label: "WTI Crude", value: wti ? formatCurrency(wti.value) : "—" },
+              { label: "Brent", value: brent ? formatCurrency(brent.value) : "—" },
+              { label: "SPR", value: spr ? `${spr.value}M bbl` : "—" },
+              { label: "Threat", value: threatLabel },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl border border-border bg-card/50 p-3">
                 <p className="font-mono text-[0.55rem] tracking-wider text-muted-foreground uppercase">

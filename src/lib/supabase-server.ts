@@ -36,8 +36,8 @@ export async function getCurrentUser() {
   if (!user) return null;
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
+    .from("strait_profiles")
+    .select("subscription_tier, subscription_status, stripe_customer_id, current_period_end")
     .eq("id", user.id)
     .single();
 

@@ -39,6 +39,25 @@
   --radius: 0.75rem;
 }
 
+:root[data-theme="light"] {
+  --background: #f7f8fa;
+  --foreground: #0a0e14;
+  --card: #ffffff;
+  --card-foreground: #0a0e14;
+  --muted: #e8eaed;
+  --muted-foreground: #57606a;
+  --primary: #0969da;
+  --primary-foreground: #ffffff;
+  --accent: #d4a017;
+  --accent-foreground: #0a0e14;
+  --border: color-mix(in srgb, #0a0e14 10%, transparent);
+  --ring: #0969da;
+  --danger: #cf222e;
+  --warning: #bf8700;
+  --success: #1a7f37;
+  --radius: 0.75rem;
+}
+
 @layer base {
   * {
     @apply border-border;

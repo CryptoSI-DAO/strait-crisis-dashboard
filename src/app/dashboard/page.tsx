@@ -8,6 +8,7 @@ import { LockedCard, PremiumLockedCard } from "@/components/locked-card";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import { DashboardHeader } from "@/components/dashboard-header";
+import { BottomNav } from "@/components/bottom-nav";
 import { getLivePrices, mergeLiveWithStored } from "@/lib/live-prices";
 import type { Metadata } from "next";
 
@@ -167,6 +168,7 @@ export default async function DashboardPage() {
           </div>
         </footer>
       </div>
+      <BottomNav />
     </main>
   );
 }

@@ -26,8 +26,8 @@ export default function AccountPage() {
       }
 
       const { data } = await supabase
-        .from("profiles")
-        .select("*")
+        .from("strait_profiles")
+        .select("email, subscription_tier, subscription_status, current_period_end")
         .eq("id", session.user.id)
         .single();
 

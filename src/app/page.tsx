@@ -39,8 +39,14 @@ export default async function LandingPage() {
 
         <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
           {/* Logo */}
-          <div className="mx-auto mb-6 w-20 text-primary">
-            <Logo size={80} />
+          <div className="mx-auto mb-6">
+            <img
+              src="/logo.png"
+              alt="Strait Crisis logo"
+              width={96}
+              height={96}
+              className="rounded-2xl"
+            />
           </div>
 
           {/* Threat level badge */}

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { User } from "@/lib/supabase-server";
-import { Logo } from "./logo";
 
 export function DashboardHeader({
   user,
@@ -13,9 +12,7 @@ export function DashboardHeader({
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:px-8 sm:py-4">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex size-8 shrink-0 items-center justify-center text-primary sm:size-9">
-            <Logo size={30} />
-          </div>
+          <img src="/logo.png" alt="logo" width={30} height={30} className="rounded-md" />
           <div className="min-w-0">
             <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">
               Strait Crisis Dashboard

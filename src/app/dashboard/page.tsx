@@ -166,7 +166,7 @@ export default async function DashboardPage() {
         <footer className="mt-10 border-t border-border pt-5 sm:mt-12 sm:pt-6">
           <div className="flex flex-col items-start justify-between gap-3 text-[0.7rem] text-muted-foreground sm:flex-row sm:items-center sm:text-xs">
             <p>
-              Data: Yahoo Finance (15min delay) · EIA API · Daily cron
+              Data: Hyperliquid (24/7) · Yahoo Finance · EIA API · Daily cron
             </p>
             <p className="font-mono">
               Research only. Not financial advice.

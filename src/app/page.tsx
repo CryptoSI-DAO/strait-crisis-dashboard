@@ -1,9 +1,10 @@
 import { LandingHeader } from "@/components/landing-header";
 import { getCurrentUser } from "@/lib/supabase-server";
-import { getLatestMetrics } from "@/lib/supabase";
+import { getLatestMetrics, getThreatScoreHistory } from "@/lib/supabase";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
 import { Logo } from "@/components/logo";
+import { ThreatBanner } from "@/components/threat-level";
 import { getLivePrices, mergeLiveWithStored } from "@/lib/live-prices";
 import type { Metadata } from "next";
 
@@ -23,6 +24,7 @@ export default async function LandingPage() {
   const livePrices = await getLivePrices();
   const metrics = mergeLiveWithStored(storedMetrics, livePrices);
   const threatScore = await computeThreatScore();
+  const threatHistory = await getThreatScoreHistory(30);
   const wti = metrics.find((m) => m.metric_key === "wti_crude");
   const brent = metrics.find((m) => m.metric_key === "brent_crude");
   const spr = metrics.find((m) => m.metric_key === "spr_inventory");
@@ -52,14 +54,6 @@ export default async function LandingPage() {
             />
           </div>
 
-          {/* Threat level badge */}
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-warning/30 bg-warning/10 px-4 py-1.5">
-            <span className="size-2 animate-pulse rounded-full bg-warning" />
-            <span className="font-mono text-[0.65rem] tracking-wider text-warning uppercase sm:text-xs">
-              {threatLabel} — Score: {threatScore.total}/100
-            </span>
-          </div>
-
           <h1 className="mx-auto max-w-3xl text-3xl font-black tracking-tight sm:text-5xl sm:leading-[1.1]">
             The Strait of Hormuz is the world's most important chokepoint.
           </h1>
@@ -67,12 +61,24 @@ export default async function LandingPage() {
             Track every signal that matters — oil prices, SPR drawdowns, tanker stress, crack spreads, and the dollar. One composite threat score. Zero noise.
           </p>
 
+          {/* Live threat banner — gauge + sparkline + score breakdown */}
+          {wti && (
+            <div className="mx-auto mt-8 max-w-3xl text-left">
+              <ThreatBanner
+                result={threatScore}
+                wtiPrice={wti.value}
+                lastUpdate={new Date().toISOString()}
+                history={threatHistory}
+              />
+            </div>
+          )}
+
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
               href="/dashboard"
               className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
             >
-              Open Dashboard
+              Open Full Dashboard
               <svg viewBox="0 0 24 24" className="size-4 fill-none stroke-current" strokeWidth="2">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
@@ -85,13 +91,12 @@ export default async function LandingPage() {
             </a>
           </div>
 
-          {/* Quick stats */}
-          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Quick stats — tighter, 3 columns now that banner owns the threat display */}
+          <div className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-3">
             {[
               { label: "WTI Crude", value: wti ? formatCurrency(wti.value) : "—" },
               { label: "Brent", value: brent ? formatCurrency(brent.value) : "—" },
               { label: "SPR", value: spr ? `${spr.value}M bbl` : "—" },
-              { label: "Threat", value: threatLabel },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl border border-border bg-card/50 p-3">
                 <p className="font-mono text-[0.55rem] tracking-wider text-muted-foreground uppercase">
@@ -146,7 +151,7 @@ export default async function LandingPage() {
               },
               {
                 title: "Daily Data Refresh",
-                desc: "Automated collection via EIA API + Yahoo Finance. Fresh data every morning at 7am UTC. No stale numbers.",
+                desc: "Automated collection via Hyperliquid (24/7) + EIA API. Fresh prices every morning at 7am UTC. No stale numbers.",
                 icon: (
                   <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
                 ),
@@ -268,10 +273,10 @@ export default async function LandingPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            Get real-time alerts on Telegram
+            Get daily briefings on Telegram
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Join our broadcast channel for daily threat score updates, alert notifications when the level changes, and weekend briefings.
+            Join our broadcast channel for daily threat score updates, weekend energy briefings, and chart summaries straight to your phone.
           </p>
           <a
             href="https://t.me/straitcrisis"

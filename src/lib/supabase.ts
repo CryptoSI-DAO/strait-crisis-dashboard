@@ -48,3 +48,37 @@ export async function getMetricHistory(
 
   return (data || []) as { recorded_at: string; value: number }[];
 }
+
+/**
+ * Threat score history for the trend sparkline.
+ */
+export async function getThreatScoreHistory(
+  days = 30,
+): Promise<
+  {
+    recorded_at: string;
+    total: number;
+    level: "GREEN" | "YELLOW" | "RED";
+    label: string;
+    wti_price: number;
+    brent_price: number;
+  }[]
+> {
+  const { data, error } = await supabase.rpc("get_threat_score_history", {
+    p_days: days,
+  });
+
+  if (error) {
+    console.error("Supabase error:", error);
+    return [];
+  }
+
+  return (data || []) as {
+    recorded_at: string;
+    total: number;
+    level: "GREEN" | "YELLOW" | "RED";
+    label: string;
+    wti_price: number;
+    brent_price: number;
+  }[];
+}

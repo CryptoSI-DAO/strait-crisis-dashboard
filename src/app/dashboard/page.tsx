@@ -1,4 +1,4 @@
-import { getLatestMetrics, getMetricHistory } from "@/lib/supabase";
+import { getLatestMetrics, getMetricHistory, getThreatScoreHistory } from "@/lib/supabase";
 import { getCurrentUser } from "@/lib/supabase-server";
 import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
@@ -56,6 +56,7 @@ export default async function DashboardPage() {
 
   const wtiPrice = wti?.value ?? 0;
   const threatScore = await computeThreatScore();
+  const threatHistory = await getThreatScoreHistory(30);
 
   return (
     <main className="min-h-screen overflow-x-hidden">
@@ -65,7 +66,12 @@ export default async function DashboardPage() {
         {/* Threat Level Banner — always free */}
         {wti && (
           <div className="mb-6 sm:mb-8">
-            <ThreatBanner result={threatScore} wtiPrice={wtiPrice} lastUpdate={lastUpdate} />
+            <ThreatBanner
+              result={threatScore}
+              wtiPrice={wtiPrice}
+              lastUpdate={lastUpdate}
+              history={threatHistory}
+            />
           </div>
         )}
 

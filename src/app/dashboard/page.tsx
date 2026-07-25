@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/metric-card";
 import { PriceChart } from "@/components/price-chart";
 import { ThreatBanner } from "@/components/threat-level";
 import { SPRBarrel } from "@/components/spr-barrel";
+import { SPRCountdown } from "@/components/spr-countdown";
 import { LockedCard, PremiumLockedCard } from "@/components/locked-card";
 import { computeThreatScore } from "@/lib/threat-score";
 import { formatCurrency } from "@/lib/utils";
@@ -57,6 +58,13 @@ export default async function DashboardPage() {
   const wtiPrice = wti?.value ?? 0;
   const threatScore = await computeThreatScore();
   const threatHistory = await getThreatScoreHistory(30);
+
+  // Calculate SPR drawdown rate from history (avg million barrels per week)
+  const sprDrawdownRate = sprHistory.length >= 2
+    ? Math.max(0, (sprHistory[0].value - sprHistory[sprHistory.length - 1].value) /
+        Math.max(1, (new Date(sprHistory[sprHistory.length - 1].recorded_at).getTime() -
+                     new Date(sprHistory[0].recorded_at).getTime()) / (1000 * 60 * 60 * 24 * 7)))
+    : 6.7; // fallback to 14-week average
 
   return (
     <main className="min-h-screen overflow-x-hidden">
@@ -139,12 +147,33 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* SPR Section — Premium only */}
+        {/* SPR Section — Premium sees full data, Free sees countdown teaser */}
         {isPremium && spr ? (
           <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3">
             <SPRBarrel current={spr.value} previous={spr.change} />
             <div className="lg:col-span-2">
               <PriceChart data={sprHistory} label="SPR Crude Inventory" unit="million bbl" height={240} />
+            </div>
+            {/* SPR Countdown — full detail for premium */}
+            <div className="lg:col-span-3">
+              <SPRCountdown currentSPR={spr.value} drawdownRate={sprDrawdownRate} />
+            </div>
+          </div>
+        ) : spr ? (
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 lg:grid-cols-3">
+            {/* Show countdown to everyone — it's the most important signal */}
+            <div className="lg:col-span-3">
+              <SPRCountdown currentSPR={spr.value} drawdownRate={sprDrawdownRate} />
+            </div>
+            <PremiumLockedCard
+              title="SPR Barrel Visualization"
+              message="See the Strategic Petroleum Reserve fill level with 20-year historical lows. Upgrade to unlock."
+            />
+            <div className="lg:col-span-2">
+              <PremiumLockedCard
+                title="90-Day SPR History"
+                message="Track the SPR drawdown trend over 90 days. Premium feature."
+              />
             </div>
           </div>
         ) : (

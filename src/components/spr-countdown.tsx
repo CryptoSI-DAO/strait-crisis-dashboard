@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 // Native date formatting - no external dependency
 function formatDate(date: Date): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -17,9 +21,27 @@ function formatDate(date: Date): string {
  */
 
 const THRESHOLDS = [
-  { label: "Congressional Minimum", value: 243, severity: "caution" },
-  { label: "Operational Minimum", value: 150, severity: "critical" },
-  { label: "Revised Minimum (2026)", value: 70, severity: "extreme" },
+  {
+    label: "Congressional Minimum",
+    value: 243,
+    severity: "caution",
+    explanation:
+      "The legally mandated floor set by Congress. Below this, Congress can block further releases and mandate refills — making the government a buyer instead of a seller. This is effectively the end of the 'price suppression' lever.",
+  },
+  {
+    label: "Operational Minimum",
+    value: 150,
+    severity: "critical",
+    explanation:
+      "The level where the salt dome storage sites begin to malfunction. Pressure drops cause cavern instability. Drawing below this risks permanent damage to the physical infrastructure that stores the reserve.",
+  },
+  {
+    label: "Revised Minimum (2026)",
+    value: 70,
+    severity: "extreme",
+    explanation:
+      "A revised operational floor reported in 2026 — roughly half the original 150M minimum. Reaching this level would represent an unprecedented depletion with no historical precedent and severe national security implications.",
+  },
 ] as const;
 
 const PEAK_SP = 727; // Historical peak (2010)
@@ -40,6 +62,7 @@ export function SPRCountdown({
   drawdownRate: number;
 }) {
   const weeklyRate = drawdownRate > 0 ? drawdownRate : 6.7; // fallback to 14-week avg
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   // Calculate weeks and dates to each threshold
   const projections = THRESHOLDS.map((t) => {
@@ -142,17 +165,34 @@ export function SPRCountdown({
             .map((p) => {
               const style = SEVERITY_STYLES[p.severity];
               return (
-                <div key={p.label} className="flex items-center justify-between gap-2">
-                  <div>
-                    <p
-                      className="font-mono text-[0.6rem] font-bold tracking-wider uppercase"
-                      style={{ color: style.color }}
-                    >
-                      {p.label}
-                    </p>
-                    <p className="font-mono text-[0.5rem] text-muted-foreground">
-                      {p.value}M barrels
-                    </p>
+                <div key={p.label} className="relative flex items-center justify-between gap-2">
+                  <div className="flex items-start gap-1.5">
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <p
+                          className="font-mono text-[0.6rem] font-bold tracking-wider uppercase"
+                          style={{ color: style.color }}
+                        >
+                          {p.label}
+                        </p>
+                        {/* Info icon — hover/tap to see explanation */}
+                        <button
+                          type="button"
+                          aria-label={`What is ${p.label}?`}
+                          className="inline-flex size-3.5 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground transition hover:border-foreground hover:text-foreground"
+                          onMouseEnter={() => setActiveTooltip(p.label)}
+                          onMouseLeave={() => setActiveTooltip(null)}
+                          onClick={() =>
+                            setActiveTooltip(activeTooltip === p.label ? null : p.label)
+                          }
+                        >
+                          <span className="font-mono text-[0.5rem] font-bold">i</span>
+                        </button>
+                      </div>
+                      <p className="font-mono text-[0.5rem] text-muted-foreground">
+                        {p.value}M barrels
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     {p.reached ? (
@@ -170,6 +210,21 @@ export function SPRCountdown({
                       </>
                     )}
                   </div>
+
+                  {/* Tooltip */}
+                  {activeTooltip === p.label && (
+                    <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg border border-border bg-popover p-3 shadow-xl">
+                      <p
+                        className="font-mono text-[0.55rem] font-bold tracking-wider uppercase mb-1"
+                        style={{ color: style.color }}
+                      >
+                        {p.label} — {p.value}M bbl
+                      </p>
+                      <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+                        {p.explanation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}

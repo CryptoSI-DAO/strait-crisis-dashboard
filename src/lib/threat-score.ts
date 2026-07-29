@@ -73,15 +73,19 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
   const sprChange = pctChange(sprHist);
   const dxy7d = pctChange7d(dxyHist);
 
+  // ── Smooth scoring helpers ──
+  // Linear interpolation: maps a value from [lo, hi] onto [outLo, outHi], clamped.
+  function lerpScore(val: number, lo: number, hi: number, outLo: number, outHi: number): number {
+    if (hi <= lo) return outLo;
+    const t = Math.min(Math.max((val - lo) / (hi - lo), 0), 1);
+    return Math.round(outLo + t * (outHi - outLo));
+  }
+
   const components: ThreatScoreComponent[] = [];
 
   // 1. Oil Price Level (0-20)
-  //    < $65 = 0, $65-70 = 5, $70-80 = 10, $80-85 = 15, > $85 = 20
-  let oilScore = 0;
-  if (wti >= 85) oilScore = 20;
-  else if (wti >= 80) oilScore = 15;
-  else if (wti >= 70) oilScore = 10;
-  else if (wti >= 65) oilScore = 5;
+  //    Smooth: $60 = 0, $90+ = 20, linear in between
+  const oilScore = lerpScore(wti, 60, 90, 0, 20);
   components.push({
     name: "Oil Price Level",
     score: oilScore,
@@ -91,11 +95,8 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
   });
 
   // 2. Oil Price Momentum 7-day (0-15)
-  //    < +2% = 0, 2-5% = 5, 5-10% = 10, > 10% = 15
-  let momentumScore = 0;
-  if (wti7d > 10) momentumScore = 15;
-  else if (wti7d > 5) momentumScore = 10;
-  else if (wti7d > 2) momentumScore = 5;
+  //    Smooth: 0% change = 0, 12% change = 15, linear in between
+  const momentumScore = lerpScore(Math.abs(wti7d), 0, 12, 0, 15);
   components.push({
     name: "Price Momentum (7d)",
     score: momentumScore,
@@ -105,12 +106,8 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
   });
 
   // 3. Brent-WTI Spread (0-15)
-  //    < $3 = 0, $3-5 = 5, $5-8 = 10, > $8 = 15
-  //    Wide spread = Middle East supply risk premium
-  let spreadScore = 0;
-  if (brentWti > 8) spreadScore = 15;
-  else if (brentWti > 5) spreadScore = 10;
-  else if (brentWti > 3) spreadScore = 5;
+  //    Smooth: $1 = 0, $10 = 15, linear in between
+  const spreadScore = lerpScore(brentWti, 1, 10, 0, 15);
   components.push({
     name: "Brent-WTI Spread",
     score: spreadScore,
@@ -120,12 +117,8 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
   });
 
   // 4. Tanker Shipping Index 7-day change (0-20)
-  //    Tanker stocks rally when shipping rates spike (chokepoint disruption)
-  //    < +3% = 0, 3-5% = 7, 5-10% = 14, > 10% = 20
-  let tankerScore = 0;
-  if (tanker7d > 10) tankerScore = 20;
-  else if (tanker7d > 5) tankerScore = 14;
-  else if (tanker7d > 3) tankerScore = 7;
+  //    Smooth: 0% = 0, 12% = 20, linear in between
+  const tankerScore = lerpScore(Math.abs(tanker7d), 0, 12, 0, 20);
   components.push({
     name: "Tanker Shipping Stress",
     score: tankerScore,
@@ -135,11 +128,8 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
   });
 
   // 5. Crack Spread Level (0-10)
-  //    < $30 = 0, $30-40 = 3, $40-55 = 6, > $55 = 10
-  let crackScore = 0;
-  if (crack > 55) crackScore = 10;
-  else if (crack > 40) crackScore = 6;
-  else if (crack > 30) crackScore = 3;
+  //    Smooth: $20 = 0, $60 = 10, linear in between
+  const crackScore = lerpScore(crack, 20, 60, 0, 10);
   components.push({
     name: "Refining Margin Stress",
     score: crackScore,
@@ -150,29 +140,30 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
 
   // 6. Dollar Divergence (0-10)
   //    Oil rising while DXY also rising = unusual stress (oil should fall with strong dollar)
-  //    If WTI up 7d AND DXY up 7d → score based on combined divergence
+  //    Smooth: score scales with the product of both divergences
+  //    Divergence factor = min(wti7d/5, 1) × min(dxy7d/2, 1), then ×10
   let dxyScore = 0;
-  if (wti7d > 2 && dxy7d > 0.5) {
-    // Both rising = divergence, stress signal
-    if (wti7d > 5 && dxy7d > 1) dxyScore = 10;
-    else dxyScore = 5;
+  if (wti7d > 0 && dxy7d > 0) {
+    const wtiFactor = Math.min(wti7d / 5, 1);
+    const dxyFactor = Math.min(dxy7d / 2, 1);
+    dxyScore = Math.round(wtiFactor * dxyFactor * 10);
   }
   components.push({
     name: "Dollar Divergence",
     score: dxyScore,
     maxScore: 10,
-    status: dxyScore >= 10 ? "high" : dxyScore >= 5 ? "elevated" : "normal",
+    status: dxyScore >= 7 ? "high" : dxyScore >= 4 ? "elevated" : "normal",
     detail: dxyScore > 0
       ? `Oil +${wti7d.toFixed(1)}% while DXY ${dxy7d >= 0 ? "+" : ""}${dxy7d.toFixed(1)}% (divergence)`
       : `No divergence — DXY ${dxy7d >= 0 ? "+" : ""}${dxy7d.toFixed(1)}%, WTI ${wti7d >= 0 ? "+" : ""}${wti7d.toFixed(1)}%`,
   });
 
   // 7. SPR Trend 30-day (0-10)
-  //    Rising = 0, flat = 3, declining -2% = 6, declining > -5% = 10
-  let sprScore = 0;
-  if (sprChange < -5) sprScore = 10;
-  else if (sprChange < -2) sprScore = 6;
-  else if (sprChange < 0) sprScore = 3;
+  //    Smooth: +2% (rising) = 0, -8% (drawdown) = 10, linear in between
+  //    Rising SPR = 0, flat = ~2, declining = scales up
+  const sprScore = sprHist.length > 1
+    ? lerpScore(sprChange, 2, -8, 0, 10)
+    : 0;
   components.push({
     name: "SPR Drawdown",
     score: sprScore,

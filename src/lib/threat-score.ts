@@ -57,7 +57,7 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
     getHistory("crack_spread_321", 14),
     getHistory("dollar_index", 14),
     getHistory("tanker_index", 14),
-    getHistory("spr_inventory", 30),
+    getHistory("spr_inventory", 90),
     getHistory("brent_wti_spread", 14),
   ]);
 
@@ -158,19 +158,27 @@ export async function computeThreatScore(): Promise<ThreatScoreResult> {
       : `No divergence — DXY ${dxy7d >= 0 ? "+" : ""}${dxy7d.toFixed(1)}%, WTI ${wti7d >= 0 ? "+" : ""}${wti7d.toFixed(1)}%`,
   });
 
-  // 7. SPR Trend 30-day (0-10)
-  //    Smooth: +2% (rising) = 0, -8% (drawdown) = 10, linear in between
-  //    Rising SPR = 0, flat = ~2, declining = scales up
-  const sprScore = sprHist.length > 1
-    ? lerpScore(sprChange, 2, -8, 0, 10)
+  // 7. SPR Depletion (0-10)
+  //    Two factors: absolute level + rate of change
+  //    A) Absolute depletion: SPR at 311M is near historic lows (~50% below pre-2022 peak ~640M)
+  //       500M+ = 0, 400M = 2, 350M = 3, 300M = 4, < 250M = 5
+  //    B) Drawdown velocity 90-day: falling fast = higher score
+  //       +5% (refilling) = 0, flat = 1, -10% = 3, -25%+ = 5
+  const sprCurrent = sprHist.length > 0 ? sprHist[sprHist.length - 1].value : 0;
+  const sprScoreLevel = sprHist.length > 0
+    ? lerpScore(sprCurrent, 500, 250, 0, 5)
     : 0;
+  const sprScoreVelocity = sprHist.length > 1
+    ? lerpScore(sprChange, 5, -25, 0, 5)
+    : 0;
+  const sprScore = sprScoreLevel + sprScoreVelocity;
   components.push({
-    name: "SPR Drawdown",
+    name: "SPR Depletion",
     score: sprScore,
     maxScore: 10,
-    status: sprScore >= 6 ? "high" : sprScore >= 3 ? "elevated" : "normal",
-    detail: sprHist.length > 1
-      ? `SPR ${sprChange >= 0 ? "+" : ""}${sprChange.toFixed(1)}% over 30 days`
+    status: sprScore >= 7 ? "high" : sprScore >= 4 ? "elevated" : "normal",
+    detail: sprHist.length > 0
+      ? `SPR at ${sprCurrent.toFixed(0)}M barrels (${sprCurrent < 350 ? "near historic lows" : sprChange < -5 ? "drawing down" : "stable"}), ${sprChange >= 0 ? "+" : ""}${sprChange.toFixed(1)}% over 90 days`
       : "No SPR history available",
   });
 
